@@ -15,14 +15,53 @@
 #include <fcntl.h>
 #include <fstream>
 using namespace std;
+
+int portKnock()
+{
+    int port1 = 50001;
+    int port2 = 50002;
+    int port3 = 50003;
+    char serverIp[10] = "127.0.0.1";
+
+    struct hostent* host = gethostbyname(serverIp);
+    sockaddr_in sendSockAddr;   
+    bzero((char*)&sendSockAddr, sizeof(sendSockAddr)); 
+    sendSockAddr.sin_family = AF_INET; 
+    sendSockAddr.sin_addr.s_addr = 
+        inet_addr(inet_ntoa(*(struct in_addr*)*host->h_addr_list));
+    sendSockAddr.sin_port = htons(port3);
+    int clientSd = socket(AF_INET, SOCK_STREAM, 0);
+    //try to connect...
+    int status = connect(clientSd,
+                         (sockaddr*) &sendSockAddr, sizeof(sendSockAddr));
+    if(status < 0)
+    {
+        cout<<"Error connecting to socket 1!"<<endl; exit(2);
+    }
+    
+
+    sendSockAddr.sin_port = htons(port1);
+
+    cout << "Connected to the server!" << endl;
+
+
+    exit(0);
+
+}
+
+
 //Client side
 int main(int argc, char *argv[])
 {
+    //portKnock();
     //we need 2 things: ip address and port number, in that order
+    
     if(argc != 3)
     {
         cerr << "Usage: ip_address port" << endl; exit(0); 
-    } //grab the IP address and port number 
+    }
+    
+     //grab the IP address and port number 
     char *serverIp = argv[1]; int port = atoi(argv[2]); 
     //create a message buffer 
     char msg[1500]; 
@@ -40,9 +79,11 @@ int main(int argc, char *argv[])
                          (sockaddr*) &sendSockAddr, sizeof(sendSockAddr));
     if(status < 0)
     {
-        cout<<"Error connecting to socket!"<<endl; break;
+        cout<<"Error connecting to socket!"<<endl; exit(2);
     }
     cout << "Connected to the server!" << endl;
+
+
     int bytesRead, bytesWritten = 0;
     struct timeval start1, end1;
     gettimeofday(&start1, NULL);
