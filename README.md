@@ -1,13 +1,21 @@
 # README
 # SC-T-409-TSAM
 ### Project 2
-This README is about our Chatserver
+This README is about our simple chat sever.  
 
 ## To build
-balblablabla  
+### Server  
+g++ server.cpp -o server  
+### Client  
+g++ client.cpp -o client  
+## To Run  
+### Server
+./server  
+### Client
+./client plús eitthvað
 
 
-## Issues ???
+## Known Issues
 
 
 ## Team Members
