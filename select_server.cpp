@@ -18,7 +18,7 @@
 #include <cstdio>
 #include <array>
 
-#define GROUP_ID "17"
+#define GROUP_ID "Y_Project_2_65"
 
 using namespace std;
 
@@ -27,6 +27,9 @@ map<string, string> usernameMap;
 set<int> fdConnected;
 map<string, int> usernameFdMap;
 
+/*
+    struct KnockModel - incomplete struct to hold which ports a user has knocked on with a timestamp
+*/
 struct KnockModel {
     vector<string> ports;
     time_t timestamp;
@@ -43,21 +46,11 @@ struct KnockModel {
     }
 
     void addPort(string newPort) {
-        /*
-        if (difftime(time(0), timestamp + (60 * 2)) > 0) {
-            return 0;
-        }
-        if (portInModel(newPort)) {
-            return 1;
-        }
-        */ 
 
         ports.push_back(newPort);
     }
 };
 
-// TODO: skoða betur
-// get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -67,6 +60,10 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+/*
+    setHints - addrinfo hints is used in the main function just before initializing the sockets. 
+    The function sets the socktype and flags.
+*/
 void setHints(addrinfo &hints) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -74,16 +71,14 @@ void setHints(addrinfo &hints) {
     hints.ai_flags = AI_PASSIVE;
 }
 
+/*
+    populateBindSocket - Creates and binds a socket with a specific port in mind.
+*/
 int populateBindSocket(const char port[5]) {
     int listener;
     struct addrinfo hints, *addressInfo, *mainSock;  
     int soReuseAddr = 1;
 
-    /*
-        Populate and bind 3 sockets for all ports
-    */
-
-    // populate hints bytes
     setHints(hints);
 
     if ((getaddrinfo(NULL, port, &hints, &addressInfo)) != 0) {
@@ -98,7 +93,6 @@ int populateBindSocket(const char port[5]) {
             continue;
         }
         
-        // lose the pesky "address already in use" error message
         setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &soReuseAddr, sizeof(int));
 
         if (bind(listener, mainSock->ai_addr, mainSock->ai_addrlen) < 0) {
@@ -113,11 +107,15 @@ int populateBindSocket(const char port[5]) {
         cout << "server failed to bind" << endl;
     }
 
-    freeaddrinfo(addressInfo); // all done with this
+    freeaddrinfo(addressInfo); 
 
     return listener;
 }
 
+
+/*
+    processMap - incomplete function which processes the maps made for port knocking
+*/
 bool processMap(map<string, KnockModel> &addressMap, string ipAddress, string port, vector<string> corrPorts) {
     struct KnockModel tmpKnock;
     tmpKnock.addPort(port);
@@ -144,14 +142,13 @@ bool processMap(map<string, KnockModel> &addressMap, string ipAddress, string po
         return true;
     }
 }
-
+/*
+    INCOMPLETE
+*/
 void checkAddressMap(map<string, KnockModel> aMap) {
     if (!aMap.empty()) {
         map<string, KnockModel>::iterator iter = aMap.begin();
         KnockModel model = iter->second;
-        
-        // TESTY
-        cout << "Address check: "<< string(iter->first) << endl;
 
         for(int i = 0; i < model.ports.size(); i++) {
             cout << model.ports.at(i) << endl;
@@ -162,6 +159,9 @@ void checkAddressMap(map<string, KnockModel> aMap) {
     
 }
 
+/*
+    sendMessage - sends the message to approtriate user with specific File Descriptor
+*/
 void sendMessage(int fd, string message, int cBytes) {
     char * sendCharMsg = new char[message.length()+1];
     strcpy(sendCharMsg, message.c_str());
@@ -170,6 +170,10 @@ void sendMessage(int fd, string message, int cBytes) {
     }
 }
 
+/*
+    isConnectedUser - searches a specific ip-address in a global map container to see if the address
+    is already connected.
+*/
 bool isConnectedUser(string address) {
     if(usernameMap.find(address) == usernameMap.end()) {
         return false;
@@ -178,6 +182,9 @@ bool isConnectedUser(string address) {
     }
 }
 
+/*
+    changeFortuneId - changes the global fortune variable for the server ID.
+*/
 void changeFortuneId() {
     string command("fortune -s");
     array<char, 128> buffer;
@@ -193,6 +200,10 @@ void changeFortuneId() {
     }
 }
 
+/*
+    getServerId - gets the full server id 
+        Format: fortuneId groupId timestamp
+*/
 string getServerId() {
     string sendId = fortuneId + " " +  GROUP_ID;
     time_t stamp = time(0);
@@ -200,6 +211,12 @@ string getServerId() {
     return sendId;
 }
 
+
+
+/*
+    checkConnection - the main checker, runs through all sockets to see incoming packages.
+    Sends back the appropriate package depending on the incoming message.
+*/
 void checkConnection(fd_set &mainFd, int &maxFd, int listener, 
                         socklen_t &addrLength, sockaddr_storage &clientAddr, map<string, 
                         KnockModel> &refMap, vector<string> corrPorts) {
@@ -211,7 +228,7 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
     int clientBytes;
 
         if (select(maxFd+1, &readFd, NULL, NULL, NULL) == -1) {
-            //cout << "error in selecting" << endl;
+            perror("ERROR: error in selecting");
         }
 
         // run through the existing connections looking for data to read
@@ -219,9 +236,7 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
             /*
                 Main Socket check
             */
-            if (FD_ISSET(i, &readFd)) {
-                
-                            
+            if (FD_ISSET(i, &readFd)) {             
                 if (i == listener) {
                     // handle new connections
                     addrLength = sizeof clientAddr;
@@ -230,14 +245,13 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                         &addrLength);
 
                     if (newFd == -1) {
-                        //cout << "Error in accepting connection" << endl;
+                        perror("ERROR: did not accept connection");
                     } else {
                         FD_SET(newFd, &mainFd); // add to master set
                         if (newFd > maxFd) {    // keep track of the max
                             maxFd = newFd;
                         }
-                        printf("selectserver: new connection from %s on "   // TODO: Skoða betur
-                            "socket %d\n",
+                        printf("Connection from %s on socket %d\n",
                             inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
                                 ipAddress, INET6_ADDRSTRLEN),
@@ -262,25 +276,25 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                             cout << "Recived!" << endl;
                             
                         }
-                        close(i); // bye!
+                        close(i); // close the connection to user
                         FD_CLR(i, &mainFd); // remove from master set
                     } else {
+
                         string address(inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
                                 ipAddress, INET6_ADDRSTRLEN));
-
-
-                        
 
                         string messageString = string(clientBuff);
 
                         vector<string> msgVector;
                         istringstream iss(messageString);
                         string msgSend;
+
                         for(string messageString; iss >> messageString;) {
                             msgVector.push_back(messageString);
                         }
 
+                        // if the package requests connection
                         if (msgVector.at(0) == "CONNECT") {
                             string username = msgVector.at(1);
 
@@ -304,7 +318,9 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 cout << "User: " << username << " CONNECTED" << endl;
                             }
                             
-                        } else if (msgVector.at(0) == "LEAVE") {
+                        } 
+                        // If the package requests leave (exit)
+                        else if (msgVector.at(0) == "LEAVE") {
                             map<string, string>::iterator leaveIter = usernameMap.find(address);
 
                             if( leaveIter != usernameMap.end()) {
@@ -317,7 +333,9 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 FD_CLR(i, &mainFd); // remove connection from master FD
                             }
 
-                        } else if (msgVector.at(0) == "MSG") {
+                        } 
+                        // if the package requests to send a message
+                        else if (msgVector.at(0) == "MSG") {
                             map<string, string>::iterator usernameIter = usernameMap.find(address);
                             string messageToSend;
                             if (usernameIter != usernameMap.end()) {
@@ -329,18 +347,20 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 messageToSend += " ";
                             }
 
+                            // if the package requests to send all users message
                             if (msgVector.at(1) == "ALL") {
-                                // we got some data from a client
                                 for(int j = 0; j <= maxFd; j++) {
-                                    // send to everyone!
+                                    // send the data
                                     if (FD_ISSET(j, &mainFd)) {
-                                        // except the listener, ourselves and thouse that have not connected
+                                        // except to the listener, ourselves and thouse that have not connected
                                         if (j != listener && j != i && fdConnected.find(j) != fdConnected.end()) {
                                             sendMessage(j, messageToSend, clientBytes);
                                         }
                                     }
                                 }
-                            } else {
+                            } 
+                            // if the package requests to send only 1 user messgae
+                            else {
                                 string sendUser = msgVector.at(1);
                                 map<string, int>::iterator fdIter = usernameFdMap.find(sendUser);
                                 
@@ -351,7 +371,9 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 }
 
                             }
-                        } else if (msgVector.at(0) == "USER") {
+                        } 
+                        // If the package requests to view all users on server
+                        else if (msgVector.at(0) == "WHO") {
                             
                             if(usernameMap.empty()) {
                                 sendMessage(i, "No users", clientBytes);
@@ -366,27 +388,36 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
 
                                sendMessage(i, sendValue, clientBytes);
                             }
-                        } else if (messageString == "ID" || msgVector.at(0) == "ID") {
+                        } 
+                        // if the package requests for the uniqe ID
+                        else if (messageString == "ID" || msgVector.at(0) == "ID") {
   
                             sendMessage(i, getServerId(), clientBytes);
-                        } else if (msgVector.at(0) == "CHANGE") {
+                        } 
+                        // if the package requests to change the unique ID
+                        else if (msgVector.at(0) == "CHANGE") {
                             if (msgVector.at(1) == "ID") {
                                 cout << "ID has changed" << endl;
                                 changeFortuneId();
                                 sendMessage(i, getServerId(), clientBytes);
-                            }
-                            
+                            } 
                         }
-
-                        
-
+                        // No commands found in package, notify the user
+                        else 
+                        {
+                            string msgSend = "Invalid commands!\nUse: CONNECT, LEAVE, MSG ALL, MSG <username>, WHO, ID, CHANGE ID";
+                            sendMessage(i, msgSend, clientBytes);
+                        }
                     }
-                } // END handle data from client
-            } // END got new incoming connection
-        } // END looping through file descriptors
+                } 
+            } 
+        } 
 }
 
-
+/*
+    checkKnockPort - this is an incomplete function to check all file descriptors for a specific knocking
+    port.
+*/
 void checkKnockPort(fd_set &mainFd, int &maxFd, int listener, 
                         socklen_t &addrLength, sockaddr_storage &clientAddr, map<string, 
                         KnockModel> &refMap, string port,  vector<string> corrPorts) {
@@ -399,15 +430,16 @@ void checkKnockPort(fd_set &mainFd, int &maxFd, int listener,
 
 
         if (select(maxFd+1, &readFd, NULL, NULL, NULL) == -1) {
-            //cout << "error in selecting" << endl;
+            perror("ERROR: error in selecting");
         }
 
-        // run through the existing connections looking for data to read
+        // look for existing connections
         for(int i = 0; i <= maxFd; i++) {
             /*
                 Main Socket check
             */
-            if (FD_ISSET(i, &readFd)) { // we got one!!
+            // Here we have something coming in
+            if (FD_ISSET(i, &readFd)) { 
                 if (i == listener) {
                     // handle new connections
                     addrLength = sizeof clientAddr;
@@ -416,7 +448,7 @@ void checkKnockPort(fd_set &mainFd, int &maxFd, int listener,
                         &addrLength);
 
                     if (newFd == -1) {
-                        //cout << "Error in accepting connection" << endl;
+                        perror("ERROR: did not accept connection");
                     } else {
                         FD_SET(newFd, &mainFd); // add to master set
                         if (newFd > maxFd) {    // keep track of the max
@@ -426,26 +458,11 @@ void checkKnockPort(fd_set &mainFd, int &maxFd, int listener,
                         string address(inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
                                 ipAddress, INET6_ADDRSTRLEN));
-                            
-                        /*
-                        cout << "the fucking address: " << address << endl;
-                        if (strcmp(address, "127.0.0.1") == 0) {
-                            cout << "its him!" << endl;
-                        }
-
-                        */
+                        
                        
                         processMap(refMap, address, port, corrPorts);
                         
                         checkAddressMap(refMap);
-                        
-                        /*
-                        map<const char *, KnockModel>::iterator iter = refMap.find(ipAddress);
-
-                        if (iter != refMap.end()) {
-                            cout << iter->second.timestamp << endl;
-                        }
-                         */
 
                         cout << "Your request has been handled" << endl;
                         printf("knockserver: new connection from %s on "   // TODO: Skoða betur
@@ -461,7 +478,9 @@ void checkKnockPort(fd_set &mainFd, int &maxFd, int listener,
 }
 
 
-
+/*
+    The main function
+*/
 int main(int argc, char *argv[])
 {
     if(argc < 1) {
@@ -524,11 +543,11 @@ int main(int argc, char *argv[])
     int maxFdKnock1 = listener2;
     int maxFdKnock2 = listener3;
 
-
+    // endless while loop iterates the main checkConnection function
     while(1) {
         checkConnection(masterFd, maxFdMaster, masterListener, addressLength, clientAddress, addressMap, correctPorts);
-        checkKnockPort(knockFd1, maxFdKnock1, listener2, addressLength, clientAddress, addressMap, string(port1), correctPorts);
-        checkKnockPort(knockFd2, maxFdKnock2, listener3, addressLength, clientAddress, addressMap, string(port2),correctPorts);
+        //checkKnockPort(knockFd1, maxFdKnock1, listener2, addressLength, clientAddress, addressMap, string(port1), correctPorts);
+        //checkKnockPort(knockFd2, maxFdKnock2, listener3, addressLength, clientAddress, addressMap, string(port2),correctPorts);
     }
     return 0;
 }
