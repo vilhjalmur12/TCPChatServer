@@ -7,10 +7,15 @@ This README is about our simple chat sever.
 ### Server  
 g++ server.cpp -o server  
 ### Client  
-g++ client.cpp -o client
+g++ client.cpp -o client  
+## To Run  
+### Server
+./server  
+### Client
+./client plús eitthvað
 
 
-## Issues ???
+## Known Issues
 
 
 ## Team Members
