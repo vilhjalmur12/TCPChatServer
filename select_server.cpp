@@ -23,7 +23,7 @@
 using namespace std;
 
 string fortuneId = "transient bus protocol violation";
-map<const char*, string> usernameMap;
+map<string, string> usernameMap;
 set<int> fdConnected;
 map<string, int> usernameFdMap;
 
@@ -118,31 +118,16 @@ int populateBindSocket(const char port[5]) {
     return listener;
 }
 
-bool processMap(map<const char *, KnockModel> &addressMap, const char * ipAddress, string port, vector<string> corrPorts) {
+bool processMap(map<string, KnockModel> &addressMap, string ipAddress, string port, vector<string> corrPorts) {
     struct KnockModel tmpKnock;
     tmpKnock.addPort(port);
-    /*
-    if(addressMap.empty()) {
-        
-        cout << tmpKnock.timestamp << endl;
-
-        addressMap.insert(pair <const char *, KnockModel> (ipAddress, tmpKnock));
-        return false;
-    }
-*/
-    
-    
-
-    if(addressMap.insert(pair <const char *, KnockModel> (ipAddress, tmpKnock)).second != false) {
+   
+    if(addressMap.insert(pair <string, KnockModel> (ipAddress, tmpKnock)).second != false) {
         // there is no ip address in there
-        
-        
-        
-
         
         return false;
     } else {
-        map<const char *, KnockModel>::iterator it = addressMap.find(ipAddress);
+        map<string, KnockModel>::iterator it = addressMap.find(ipAddress);
         KnockModel &model = it->second;
         
         if(model.ports.size() < 3) {
@@ -160,11 +145,12 @@ bool processMap(map<const char *, KnockModel> &addressMap, const char * ipAddres
     }
 }
 
-void checkAddressMap(map<const char *, KnockModel> aMap) {
+void checkAddressMap(map<string, KnockModel> aMap) {
     if (!aMap.empty()) {
-        map<const char *, KnockModel>::iterator iter = aMap.begin();
+        map<string, KnockModel>::iterator iter = aMap.begin();
         KnockModel model = iter->second;
-
+        
+        // TESTY
         cout << "Address check: "<< string(iter->first) << endl;
 
         for(int i = 0; i < model.ports.size(); i++) {
@@ -179,12 +165,12 @@ void checkAddressMap(map<const char *, KnockModel> aMap) {
 void sendMessage(int fd, string message, int cBytes) {
     char * sendCharMsg = new char[message.length()+1];
     strcpy(sendCharMsg, message.c_str());
-    if (send(fd, sendCharMsg, strlen(sendCharMsg), 0) == -1) {
+    if (send(fd, sendCharMsg, strlen(sendCharMsg)+1, 0) == -1) {
         perror("sending error");
     }
 }
 
-bool isConnectedUser(const char* address) {
+bool isConnectedUser(string address) {
     if(usernameMap.find(address) == usernameMap.end()) {
         return false;
     } else {
@@ -215,7 +201,7 @@ string getServerId() {
 }
 
 void checkConnection(fd_set &mainFd, int &maxFd, int listener, 
-                        socklen_t &addrLength, sockaddr_storage &clientAddr, map<const char *, 
+                        socklen_t &addrLength, sockaddr_storage &clientAddr, map<string, 
                         KnockModel> &refMap, vector<string> corrPorts) {
     fd_set readFd = mainFd;
     int newFd;
@@ -233,7 +219,7 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
             /*
                 Main Socket check
             */
-            if (FD_ISSET(i, &readFd)) { // we got one!!
+            if (FD_ISSET(i, &readFd)) {
                 
                             
                 if (i == listener) {
@@ -257,9 +243,9 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 ipAddress, INET6_ADDRSTRLEN),
                             newFd);
                     
-                        const char* address = inet_ntop(clientAddr.ss_family,
+                        string address(inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
-                                ipAddress, INET6_ADDRSTRLEN);
+                                ipAddress, INET6_ADDRSTRLEN));
 
                     }
                 } else {
@@ -279,12 +265,14 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                         close(i); // bye!
                         FD_CLR(i, &mainFd); // remove from master set
                     } else {
-                        const char* address = inet_ntop(clientAddr.ss_family,
+                        string address(inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
-                                ipAddress, INET6_ADDRSTRLEN);
+                                ipAddress, INET6_ADDRSTRLEN));
+
+
+                        
 
                         string messageString = string(clientBuff);
-                        cout << "Message: " << messageString << endl;
 
                         vector<string> msgVector;
                         istringstream iss(messageString);
@@ -295,13 +283,21 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
 
                         if (msgVector.at(0) == "CONNECT") {
                             string username = msgVector.at(1);
-                            if (usernameFdMap.find(username) != usernameFdMap.end()) {
+
+                            if(usernameMap.find(address) != usernameMap.end()) {
+                                map<string, string>::iterator uMapIter = usernameMap.find(address);
+                                username = uMapIter->second;
+                                msgSend = "You are already connected with the username " + username;
+                                sendMessage(i, msgSend, clientBytes);
+                            } 
+                            else if (usernameFdMap.find(username) != usernameFdMap.end()) {
                                 string msg = "Sorry the username is taken";
                                 sendMessage(i, msg, clientBytes);
                                 close(i);
                                 FD_CLR(i, &mainFd); // remove from master set
-                            } else {
-                                usernameMap.insert(pair<const char*, string> (address, username));
+                            } 
+                            else {
+                                usernameMap.insert(pair<string, string> (address, username));
                                 fdConnected.insert(i);
                                 usernameFdMap.insert(pair<string, int> (username, i));
 
@@ -309,7 +305,7 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                             }
                             
                         } else if (msgVector.at(0) == "LEAVE") {
-                            map<const char*, string>::iterator leaveIter = usernameMap.find(address);
+                            map<string, string>::iterator leaveIter = usernameMap.find(address);
 
                             if( leaveIter != usernameMap.end()) {
                                 string username = leaveIter->second;
@@ -317,20 +313,20 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                 usernameFdMap.erase(username);
                                 fdConnected.erase(i);
                                 
-                                close(i); // bye!
-                                FD_CLR(i, &mainFd); // remove from master set
+                                close(i); // closes!!!
+                                FD_CLR(i, &mainFd); // remove connection from master FD
                             }
 
                         } else if (msgVector.at(0) == "MSG") {
-                            map<const char*, string>::iterator usernameIter = usernameMap.find(address);
-
+                            map<string, string>::iterator usernameIter = usernameMap.find(address);
+                            string messageToSend;
                             if (usernameIter != usernameMap.end()) {
-                                msgSend += usernameIter->second + ": ";
+                                messageToSend += usernameIter->second + ": ";
                             }
 
                             for(int h = 2; h < msgVector.size(); h++) {
-                                msgSend += msgVector.at(h);
-                                msgSend += " ";
+                                messageToSend += msgVector.at(h);
+                                messageToSend += " ";
                             }
 
                             if (msgVector.at(1) == "ALL") {
@@ -340,35 +336,46 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
                                     if (FD_ISSET(j, &mainFd)) {
                                         // except the listener, ourselves and thouse that have not connected
                                         if (j != listener && j != i && fdConnected.find(j) != fdConnected.end()) {
-                                            sendMessage(j, msgSend, clientBytes);
+                                            sendMessage(j, messageToSend, clientBytes);
                                         }
                                     }
                                 }
                             } else {
                                 string sendUser = msgVector.at(1);
+                                map<string, int>::iterator fdIter = usernameFdMap.find(sendUser);
                                 
+                                if (fdIter == usernameFdMap.end()) {
+                                    sendMessage(i, "There is no username which matches", clientBytes);
+                                } else {
+                                    sendMessage(fdIter->second, messageToSend, clientBytes);
+                                }
 
                             }
                         } else if (msgVector.at(0) == "USER") {
                             
-
                             if(usernameMap.empty()) {
                                 sendMessage(i, "No users", clientBytes);
                             } else {
                                 string sendValue = "USERS: ";                            
-                               map<const char*, string>::iterator userIter = usernameMap.begin();
+                               map<string, string>::iterator userIter = usernameMap.begin();
 
                                for(userIter; userIter != usernameMap.end(); userIter++) {
-                                   sendValue += userIter->second;
+                
+                                   sendValue += userIter->second + " ";
                                } 
+
                                sendMessage(i, sendValue, clientBytes);
                             }
                         } else if (messageString == "ID" || msgVector.at(0) == "ID") {
+  
+                            sendMessage(i, getServerId(), clientBytes);
+                        } else if (msgVector.at(0) == "CHANGE") {
+                            if (msgVector.at(1) == "ID") {
+                                cout << "ID has changed" << endl;
+                                changeFortuneId();
+                                sendMessage(i, getServerId(), clientBytes);
+                            }
                             
-                            sendMessage(i, getServerId(), clientBytes);
-                        } else if (messageString == "CHANGE ID") {
-                            changeFortuneId();
-                            sendMessage(i, getServerId(), clientBytes);
                         }
 
                         
@@ -380,10 +387,8 @@ void checkConnection(fd_set &mainFd, int &maxFd, int listener,
 }
 
 
-
-
 void checkKnockPort(fd_set &mainFd, int &maxFd, int listener, 
-                        socklen_t &addrLength, sockaddr_storage &clientAddr, map<const char *, 
+                        socklen_t &addrLength, sockaddr_storage &clientAddr, map<string, 
                         KnockModel> &refMap, string port,  vector<string> corrPorts) {
     fd_set readFd = mainFd;
     int newFd;
@@ -418,9 +423,9 @@ void checkKnockPort(fd_set &mainFd, int &maxFd, int listener,
                             maxFd = newFd;
                         }
 
-                        const char * address =  inet_ntop(clientAddr.ss_family,
+                        string address(inet_ntop(clientAddr.ss_family,
                                 get_in_addr((struct sockaddr*)&clientAddr),
-                                ipAddress, INET6_ADDRSTRLEN);
+                                ipAddress, INET6_ADDRSTRLEN));
                             
                         /*
                         cout << "the fucking address: " << address << endl;
@@ -467,7 +472,7 @@ int main(int argc, char *argv[])
     /*
         Initis
     */
-    map<const char *, KnockModel> addressMap;
+    map<string, KnockModel> addressMap;
 
     const char mainPort[5] = "5001";
     const char port1[5] = "5002";
@@ -522,8 +527,8 @@ int main(int argc, char *argv[])
 
     while(1) {
         checkConnection(masterFd, maxFdMaster, masterListener, addressLength, clientAddress, addressMap, correctPorts);
-        //checkKnockPort(knockFd1, maxFdKnock1, listener2, addressLength, clientAddress, addressMap, string(port1), correctPorts);
-        //checkKnockPort(knockFd2, maxFdKnock2, listener3, addressLength, clientAddress, addressMap, string(port2),correctPorts);
+        checkKnockPort(knockFd1, maxFdKnock1, listener2, addressLength, clientAddress, addressMap, string(port1), correctPorts);
+        checkKnockPort(knockFd2, maxFdKnock2, listener3, addressLength, clientAddress, addressMap, string(port2),correctPorts);
     }
     return 0;
 }
