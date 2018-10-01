@@ -12,7 +12,7 @@
 using namespace std;
 
 // Constant value definitions
-#define DEFAULT_SERVER_PORT 50001
+#define DEFAULT_SERVER_PORT 5001
 #define LISTENQ 10 //max # of pending connections
 #define MAXCHARS 1024 //max # bytes sent between server & client
 
@@ -25,6 +25,8 @@ void run_client(fd_set* cli_fds, fd_set* main_fd, int* max_fd, int* sock_fd, cha
 void init_connection(char* ip_addr, fd_set* main_fd, fd_set* cli_fds, int* sock_fd, SA_in* serv_addr);
 void send_msg(char* name, int sock_fd);
 void recv_msg(int sock_fd);
+
+int port;
 
 /**
  * Runs the program.
@@ -45,7 +47,9 @@ int main(int argc, char** argv)
 	} //end if
 
 	// Set user's name
-	name = argv[2];
+	name = "";
+
+	port = atoi(argv[2]);
 	
 	// Initialize connection to server
 	init_connection(argv[1], &main_fd, &cli_fds, &sock_fd, &serv_addr);
@@ -100,7 +104,7 @@ void init_connection(char* ip_addr, fd_set* main_fd, fd_set* cli_fds, int* sock_
 	// Initialize server address structure for connection
 	bzero(serv_addr, sizeof(SA_in));
 	serv_addr->sin_family = AF_INET;
-	serv_addr->sin_port = htons(DEFAULT_SERVER_PORT);
+	serv_addr->sin_port = htons(port);
 	inet_pton(AF_INET, ip_addr, &(serv_addr->sin_addr));
 	
 	// Connect to the server
@@ -138,7 +142,7 @@ void send_msg(char* name, int sock_fd)
 	{
 		char full_msg[MAXCHARS] = {'0'};
 		snprintf(full_msg, sizeof(msg_buf),
-			 "%s: %s", name, msg_buf);
+			 "%s", msg_buf);
 
 		write(sock_fd, full_msg, strlen(full_msg));
 	} //end else
