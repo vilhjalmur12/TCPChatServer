@@ -1,1 +1,6 @@
 .vscode/
+client
+server
+resources.h
+gumbo_client.c
+

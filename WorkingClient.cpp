@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
 
     cout << " NAME TEST" << endl;
     string userID;
-    userID = userIdPrompt();
+    //userID = userIdPrompt();
 
-    cout << userID << endl;
+    //cout << userID << endl;
     
 
 
