@@ -4,9 +4,9 @@
 This README is about our simple chat sever.  
 
 ## To build
-# Server  
+### Server  
 g++ server.cpp -o server  
-# Client  
+### Client  
 g++ client.cpp -o client
 
 
