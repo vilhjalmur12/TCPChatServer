@@ -7,16 +7,16 @@ This README is about our simple chat sever.
 ### Server  
 g++ server.cpp -o server  
 ### Client  
-g++ client.cpp -o client  
+g++ -pthread client.cpp -o client  
 ## To Run  
 ### Server
 ./server  
 ### Client
-./client plús eitthvað
+./client hostname port
 
 
 ## Known Issues
-
+Port knocking
 
 ## Team Members
 Ívar Kristinn Hallsson: ivar17@ru.is  
