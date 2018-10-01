@@ -14,6 +14,10 @@ MSG ALL - Sends message to everybody.
 CHANGE ID - Generates new server id, with timestamp and group's initials(Y_Project_2 65).  
 
 ## To build
+### prebuilds
+Makes sure to have fortune installed.
+For linux type to terminal
+sudo apt install fortune-mod
 ### Server  
 g++ server.cpp -o server  
 ### Client  
