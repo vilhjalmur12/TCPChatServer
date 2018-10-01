@@ -4,7 +4,7 @@
 This README is about our simple chat sever(that was not that simple) and with accompanying client.  
 The whole system was compiled on Linux Ubuntu.
 
-##Server commands
+## Server commands  
 ID - Generates unique server ID.  
 CONNECT <Name> - To join the chat, you have connect first.  
 LEAVE - To leave the server.  
